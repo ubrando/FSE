@@ -2,7 +2,7 @@ import RPi.GPIO as GPIO
 import json
 import time
 
-class ServDistribuido:
+class Sala:
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
     def __init__(self,ID):
@@ -12,6 +12,7 @@ class ServDistribuido:
         
         self.numero_sala = ID
         #Saídas
+        self.nome = config_sala["nome"]
         self.L_01 = config_sala["outputs"][0]["gpio"] #lâmpada 01
         self.L_02 = config_sala["outputs"][1]["gpio"] #lâmpada 02
         self.AC =config_sala["outputs"][3]["gpio"]  #ar-condicionado
@@ -26,9 +27,8 @@ class ServDistribuido:
         self.SC_OUT =config_sala["inputs"][5]["gpio"] #sensor de saída
         #Sensor
         self.DHT22 = 4 #sensor de temperatura
-        self.SensorAlarme = GPIO.LOW
+        self.SensorAlarme = False
         self.SensorIncendio = True
-        self.pessoas = 0
     
     def configuraSaidas(self):
         GPIO.setup(self.L_02, GPIO.OUT)
@@ -74,21 +74,6 @@ class ServDistribuido:
             GPIO.output(self.AL_BZ, GPIO.HIGH)
             time.sleep(8)
             GPIO.output(self.AL_BZ, GPIO.LOW)
-
-    def ligarAlarme(self):
-        self.SensorAlarme = True
-    
-    def desligarAlarme(self):
-        self.SensorAlarme = False
-
-    def contagemDePessoas(self):  #testagem pendente
-        if GPIO.input(self.SC_IN) == GPIO.HIGH:
-            self.pessoas += 1
-        if GPIO.input(self.SC_OUT) == GPIO.HIGH:
-            self.pessoas += 1
-        print(f'quantidade de pessoas na sala é: {self.pessoas}'  )
-
-
 
 
 

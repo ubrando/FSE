@@ -8,12 +8,12 @@ def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     username = 'Servidor Central'
     try:
-        server.bind(('localhost', 7777))
-        server.listen()
+        server.bind(('localhost', 10213))
     except:
         return print('\nNão foi possível iniciar o servidor!\n')
 
     while True:
+        server.listen()
         client, addr = server.accept()
         clients.append(client)
 
@@ -38,7 +38,7 @@ def messagesTreatment(client):
         except:
             print('\nNão foi possível permanecer conectado no servidor!\n')
             print('Pressione <Enter> Para continuar...')
-            client.close()
+            deleteClient(client)
             break
 
 

@@ -1,79 +1,141 @@
 import RPi.GPIO as GPIO
 import json
 import time
+from gpiozero import LED, Button
+import board
+import adafruit_dht
+
+
 
 class Sala:
     GPIO.setwarnings(False)
-    GPIO.setmode(GPIO.BCM)
     def __init__(self,ID):
-        #Abertura do json para configuração da placa
-        with open("configuracao_sala_01.json", encoding='utf-8') as file:
-            config_sala = json.load(file)
         
+        # Abertura do json para configuração da placa
+        if (ID % 2 == 1):
+            with open("configuracao_sala_01.json", encoding='utf-8') as file:
+                config_sala = json.load(file)
+
+        if (ID % 2 == 0):
+            with open("configuracao_sala_02.json", encoding='utf-8') as file:
+                config_sala = json.load(file)        
+        
+        #Número da sala
         self.numero_sala = ID
+
         #Saídas
         self.nome = config_sala["nome"]
-        self.L_01 = config_sala["outputs"][0]["gpio"] #lâmpada 01
-        self.L_02 = config_sala["outputs"][1]["gpio"] #lâmpada 02
-        self.AC =config_sala["outputs"][3]["gpio"]  #ar-condicionado
-        self.PR = config_sala["outputs"][2]["gpio"] #projetos
-        self.AL_BZ = config_sala["outputs"][4]["gpio"] #buzina
-        #Entradas
-        self.SPres = config_sala["inputs"][0]["gpio"] # sensor de presença
-        self.SFum = config_sala["inputs"][1]["gpio"] #sensor de fumaça
-        self.SJan =config_sala["inputs"][2]["gpio"] #sensor de janela
-        self.SPor =config_sala["inputs"][3]["gpio"] #sensor de portas
-        self.SC_IN =config_sala["inputs"][4]["gpio"] #sensor de entrada
-        self.SC_OUT =config_sala["inputs"][5]["gpio"] #sensor de saída
-        #Sensor
-        self.DHT22 = 4 #sensor de temperatura
-        self.SensorAlarme = False
-        self.SensorIncendio = True
-    
-    def configuraSaidas(self):
-        GPIO.setup(self.L_02, GPIO.OUT)
-        GPIO.setup(self.L_01, GPIO.OUT)
-        GPIO.setup(self.AC, GPIO.OUT)
-        GPIO.setup(self.PR, GPIO.OUT)
-        GPIO.setup(self.AL_BZ, GPIO.OUT)
+        self.L_01 = LED(config_sala["outputs"][0]["gpio"]) #lâmpada 01
+        self.L_02 = LED(config_sala["outputs"][1]["gpio"]) #lâmpada 02
+        self.AC = LED(config_sala["outputs"][3]["gpio"])  #ar-condicionado
+        self.PR = LED(config_sala["outputs"][2]["gpio"]) #projetos
+        self.AL_BZ = LED(config_sala["outputs"][4]["gpio"]) #buzina
 
-    def configuraEntradas(self):
-        GPIO.setup(self.SPres, GPIO.IN)
-        GPIO.setup(self.SFum, GPIO.IN)
-        GPIO.setup(self.SJan, GPIO.IN)
-        GPIO.setup(self.SPor, GPIO.IN)
-        GPIO.setup(self.SC_IN, GPIO.IN)
-        GPIO.setup(self.SC_OUT, GPIO.IN)
-    
+        #Entradas
+        self.SPres = Button(config_sala["inputs"][0]["gpio"]) # sensor de presença
+        self.SFum = Button(config_sala["inputs"][1]["gpio"]) #sensor de fumaça
+        self.SJan = Button(config_sala["inputs"][2]["gpio"]) #sensor de janela
+        self.SPor = Button(config_sala["inputs"][3]["gpio"]) #sensor de portas
+        self.SC_IN = Button(config_sala["inputs"][4]["gpio"]) #sensor de entrada
+        self.SC_OUT = Button(config_sala["inputs"][5]["gpio"]) #sensor de saída
+
+        #Sensor DHT22
+        self.temperatura = '21.7C'
+        self.humidity = '79.0%'
+
+        #Estados
+        self.SensorAlarme = False
+        self.SensorIncendio = False
+        self.pessoas = 0
+
+    # Funções de setar estados
+
     def ligarLampada1(self):
-        GPIO.output(self.L_01, GPIO.HIGH)
+        self.L_01.on()
+
 
     def ligarLampada2(self):
-        GPIO.output(self.L_02, GPIO.HIGH)
+        self.L_02.on()
+
 
     def desligarLampada1(self):
-        GPIO.output(self.L_01, GPIO.LOW)
+        self.L_01.off()
+
 
     def desligarLampada2(self):
-        GPIO.output(self.L_02, GPIO.LOW)
+        self.L_02.off()
+
 
     def ligarAC(self):
-         GPIO.output(self.AC, GPIO.HIGH)
+        self.AC.on()
+
 
     def desligarAC(self):
-         GPIO.output(self.AC, GPIO.LOW)
+        self.AC.off()
 
     def ligarProjetor(self):
-         GPIO.output(self.PR, GPIO.HIGH)
+        self.PR.on()
 
     def desligarPojetor(self):
-         GPIO.output(self.PR, GPIO.LOW)
+        self.PR.off()
     
     def ligarBuzina(self):
-        if(GPIO.input(self.SFum ) or ((self.SensorAlarme == True) and (self.SJan or self.SPor or self.SPres))):
-            GPIO.output(self.AL_BZ, GPIO.HIGH)
-            time.sleep(8)
-            GPIO.output(self.AL_BZ, GPIO.LOW)
+        if(((not self.SFum.is_active) and self.SensorIncendio) or ((self.SensorAlarme) and ((not self.SJan.is_active) or (not self.SPor.is_active) or (not self.SPres.is_active)))):
+            self.AL_BZ.on()
 
+    def desligarBuzina(self):
+        self.AL_BZ.off()
+    
+    def ligarAlarme(self):
+        self.SensorAlarme = True
+
+    def desligarAlarme(self):
+        self.SensorAlarme = False
+
+    def ligarAlarmeIncendio(self):
+        self.SensorIncendio = True 
+
+    def desligarAlarmeIncendio(self):
+        self.SensorIncendio = False 
+
+    # Função de contar pessoas na sala
+    def contadorDepessoas(self):
+        if not self.SC_IN.is_active:
+            time.sleep(0.05)
+            if self.SC_IN.is_active:
+                self.pessoas += 1            
+        if not self.SC_OUT.is_active:
+            time.sleep(0.05)
+            if not self.SC_OUT.is_active:
+                self.pessoas -= 1
+        if self.pessoas < 0:
+            self.pessoas = 0
+            
+    #   Função de medir temperatura 
+    def medidor(self):
+            if (self.numero_sala % 2 == 0): 
+                GPIO.setup(18, GPIO.IN)
+                GPIO.setwarnings(False)
+                GPIO.setmode(GPIO.BCM)
+                dhtDevice = adafruit_dht.DHT22(board.D18)
+                dhtDevice = adafruit_dht.DHT22(board.D18, use_pulseio=False)
+            else:
+                GPIO.setup(4, GPIO.IN)
+                GPIO.setwarnings(False)
+                GPIO.setmode(GPIO.BCM)
+                dhtDevice = adafruit_dht.DHT22(board.D4)
+                dhtDevice = adafruit_dht.DHT22(board.D4, use_pulseio=False)
+            try:
+                self.humidity = f"{dhtDevice.humidity:.1f}%"
+                self.temperatura = f"{dhtDevice._temperature}C"
+                
+            except RuntimeError as error:
+                pass
+                time.sleep(2.0)
+            except Exception as error:
+                dhtDevice.exit()
+                raise error
+
+    
 
 

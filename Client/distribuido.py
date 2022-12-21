@@ -101,13 +101,12 @@ class Sala:
     # Função de contar pessoas na sala
     def contadorDepessoas(self):
         if not self.SC_IN.is_active:
+            self.pessoas +=1
             time.sleep(0.05)
-            if self.SC_IN.is_active:
-                self.pessoas += 1            
+                      
         if not self.SC_OUT.is_active:
+            self.pessoas -= 1
             time.sleep(0.05)
-            if not self.SC_OUT.is_active:
-                self.pessoas -= 1
         if self.pessoas < 0:
             self.pessoas = 0
             
